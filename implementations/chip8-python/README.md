@@ -7,3 +7,5 @@
 - pygame 2.5.2
 
 ## Features
+
+- CHIP-8 OK

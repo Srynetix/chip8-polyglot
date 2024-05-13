@@ -27,7 +27,7 @@ import pytest
     ("A123", opcodes.OpCodeLdI(address=Address(0x123))),
     ("B123", opcodes.OpCodeJpV0(address=Address(0x123))),
     ("C123", opcodes.OpCodeRnd(register=Register(0x1), byte=Byte(0x23))),
-    ("D123", opcodes.OpCodeDrw(registerX=Register(0x1), registerY=Register(0x2), nibble=Byte(0x3))),
+    ("D123", opcodes.OpCodeDrw(register_x=Register(0x1), register_y=Register(0x2), height=Byte(0x3))),
     ("E19E", opcodes.OpCodeSkp(register=Register(0x1))),
     ("E1A1", opcodes.OpCodeSknp(register=Register(0x1))),
     ("F107", opcodes.OpCodeLdDelayRead(register=Register(0x1))),

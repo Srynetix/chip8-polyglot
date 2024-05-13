@@ -2,6 +2,10 @@ from .types import Byte
 
 
 class Font:
+    SPRITE_WIDTH = 8
+    SPRITE_HEIGHT = 5
+    SPRITE_SIZE = SPRITE_WIDTH * SPRITE_HEIGHT
+
     _data: list[Byte]
 
     @classmethod

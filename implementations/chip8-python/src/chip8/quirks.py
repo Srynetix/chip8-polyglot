@@ -1,13 +1,13 @@
 class Quirks:
-    _shift_y: bool
-    _add_i_carry: bool
-    _vf_reset: bool
-    _index_increment: bool
-    _draw_clipping: bool
+    shift_y: bool
+    add_i_carry: bool
+    vf_reset: bool
+    index_increment: bool
+    draw_clipping: bool
 
     def __init__(self) -> None:
-        self._shift_y = True
-        self._add_i_carry = False
-        self._vf_reset = True
-        self._index_increment = True
-        self._draw_clipping = True
+        self.shift_y = True
+        self.add_i_carry = False
+        self.vf_reset = True
+        self.index_increment = True
+        self.draw_clipping = True

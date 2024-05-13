@@ -1,4 +1,5 @@
 import enum
+import logging
 from random import Random
 import time
 
@@ -13,6 +14,8 @@ from .cartridge import Cartridge
 from .quirks import Quirks
 from .types import Address, Register, Byte
 from . import opcodes
+
+logger = logging.getLogger(__name__)
 
 
 class StepResult(enum.Enum):
@@ -32,7 +35,6 @@ class Engine:
     _quirks: Quirks
     _keypad: Keypad
     _ticks: int
-    _beep: bool
 
     def __init__(self) -> None:
         self._display = Display()
@@ -45,7 +47,6 @@ class Engine:
         self._quirks = Quirks()
         self._timers = Timers()
         self._ticks = 0
-        self._beep = False
 
         self.reset()
 
@@ -57,24 +58,31 @@ class Engine:
         self._keypad.reset()
         self._timers.reset()
         self._ticks = 0
-        self._beep = False
 
-        # Load font
-        self._memory.store_memory(Address(0x0), self._font._data)
+        self._memory.store_font(self._font)
 
     def load_cartridge(self, cartridge: Cartridge) -> None:
-        self._memory.store_memory(Address(0x200), cartridge._data)
+        self._memory.store_cartridge(cartridge)
 
     def step_timers(self) -> None:
         self._keypad.step()
         self._timers.step()
 
-    def step(self) -> StepResult:
-        self._beep = self._timers.sound_timer.value > 0
+    @property
+    def beeping(self) -> bool:
+        return self._timers.sound_timer > 0
+    
+    @property
+    def quirks(self) -> Quirks:
+        return self._quirks
 
+    def step(self) -> StepResult:
         # Read opcode
         int_code = self._memory.read_opcode(self._registers.pc)
         code = opcodes.parse_opcode(int_code)
+
+        logging.info(f" [step] PC={self._registers.pc} int_code={int_code} code={code}")
+
         if code is None:
             return StepResult.BadOpCode
 
@@ -153,7 +161,7 @@ class Engine:
                 opcode.register1, self._registers.get_vx(opcode.register1) | self._registers.get_vx(opcode.register2)
             )
 
-            if self._quirks._vf_reset:
+            if self._quirks.vf_reset:
                 self._registers.set_carry(False)
 
             self._registers.increment_pc()
@@ -163,7 +171,7 @@ class Engine:
                 opcode.register1, self._registers.get_vx(opcode.register1) & self._registers.get_vx(opcode.register2)
             )
 
-            if self._quirks._vf_reset:
+            if self._quirks.vf_reset:
                 self._registers.set_carry(False)
 
             self._registers.increment_pc()
@@ -173,12 +181,13 @@ class Engine:
                 opcode.register1, self._registers.get_vx(opcode.register1) ^ self._registers.get_vx(opcode.register2)
             )
 
-            if self._quirks._vf_reset:
+            if self._quirks.vf_reset:
                 self._registers.set_carry(False)
 
             self._registers.increment_pc()
 
         elif isinstance(opcode, opcodes.OpCodeAdd):
+            # Get inner value to handle overflow
             added = self._registers.get_vx(opcode.register1).value + self._registers.get_vx(opcode.register2).value
 
             self._registers.set_vx(opcode.register1, Byte(added))
@@ -187,40 +196,40 @@ class Engine:
             self._registers.increment_pc()
 
         elif isinstance(opcode, opcodes.OpCodeSub):
-            vx = self._registers.get_vx(opcode.register1).value
-            vy = self._registers.get_vx(opcode.register2).value
+            vx = self._registers.get_vx(opcode.register1)
+            vy = self._registers.get_vx(opcode.register2)
 
-            self._registers.set_vx(opcode.register1, Byte(vx - vy))
+            self._registers.set_vx(opcode.register1, vx - vy)
             self._registers.set_carry(vx >= vy)
 
             self._registers.increment_pc()
 
         elif isinstance(opcode, opcodes.OpCodeShiftRight):
-            if self._quirks._shift_y:
+            if self._quirks.shift_y:
                 self._registers.set_vx(opcode.register1, self._registers.get_vx(opcode.register2))
             vx = self._registers.get_vx(opcode.register1)
 
-            self._registers.set_vx(opcode.register1, Byte(vx.value // 2))
-            self._registers.set_carry(vx.value & 1 == 1)
+            self._registers.set_vx(opcode.register1, vx // 2)
+            self._registers.set_carry(vx & 1 == 1)
 
             self._registers.increment_pc()
 
         elif isinstance(opcode, opcodes.OpCodeSubInv):
-            vx = self._registers.get_vx(opcode.register1).value
-            vy = self._registers.get_vx(opcode.register2).value
+            vx = self._registers.get_vx(opcode.register1)
+            vy = self._registers.get_vx(opcode.register2)
 
-            self._registers.set_vx(opcode.register1, Byte(vy - vx))
+            self._registers.set_vx(opcode.register1, vy - vx)
             self._registers.set_carry(vx <= vy)
 
             self._registers.increment_pc()
 
         elif isinstance(opcode, opcodes.OpCodeShiftLeft):
-            if self._quirks._shift_y:
+            if self._quirks.shift_y:
                 self._registers.set_vx(opcode.register1, self._registers.get_vx(opcode.register2))
             vx = self._registers.get_vx(opcode.register1)
 
-            self._registers.set_vx(opcode.register1, Byte(vx.value * 2))
-            self._registers.set_carry(vx.value & 0b1000_0000 == 0b1000_0000)
+            self._registers.set_vx(opcode.register1, vx * 2)
+            self._registers.set_carry(vx & 0b1000_0000 == 0b1000_0000)
 
             self._registers.increment_pc()
 
@@ -240,20 +249,20 @@ class Engine:
         elif isinstance(opcode, opcodes.OpCodeJpV0):
             v0 = self._registers.get_vx(Register(0))
 
-            self._registers.set_pc(Address(v0.value + opcode.address.value))
+            self._registers.set_pc(opcode.address + v0)
 
         elif isinstance(opcode, opcodes.OpCodeRnd):
-            value = self._rng.randint(0, 256) & opcode.byte.value
-            self._registers.set_vx(opcode.register, Byte(value))
+            value = opcode.byte & Byte.random(self._rng)
+            self._registers.set_vx(opcode.register, value)
 
             self._registers.increment_pc()
 
         elif isinstance(opcode, opcodes.OpCodeDrw):
-            vx = self._registers.get_vx(opcode.registerX)
-            vy = self._registers.get_vx(opcode.registerY)
-            mem = self._memory.read_memory(self._registers.i, opcode.nibble)
+            vx = self._registers.get_vx(opcode.register_x)
+            vy = self._registers.get_vx(opcode.register_y)
+            mem = self._memory.read_memory(self._registers.i, opcode.height)
 
-            collision = self._display.draw(vx.value, vy.value, mem, clip=self._quirks._draw_clipping)
+            collision = self._display.draw(vx.value, vy.value, mem, clip=self._quirks.draw_clipping)
             self._registers.set_carry(collision)
 
             self._registers.increment_pc()
@@ -291,31 +300,37 @@ class Engine:
             self._registers.increment_pc()
 
         elif isinstance(opcode, opcodes.OpCodeAddI):
-            i_value = self._registers.i.value
-            reg_value = self._registers.get_vx(opcode.register).value
+            i_value = self._registers.i
+            reg_value = self._registers.get_vx(opcode.register)
 
-            carry = (i_value + reg_value) >= 0x1000
-            if self._quirks._add_i_carry:
+            # Look for overflow
+            addition = i_value + reg_value
+            carry = addition >= 0x1000
+            if self._quirks.add_i_carry:
                 self._registers.set_carry(carry)
 
-            self._registers.set_i(Address(i_value + reg_value))
+            self._registers.set_i(addition)
 
             self._registers.increment_pc()
 
         elif isinstance(opcode, opcodes.OpCodeLdF):
-            self._registers.set_i(Address(opcode.register.value * (8 * 5)))
+            self._registers.set_i(
+                self._memory.FONT_START_LOCATION
+                + Address(opcode.register.value * (Font.SPRITE_WIDTH * Font.SPRITE_HEIGHT))
+            )
 
             self._registers.increment_pc()
 
         elif isinstance(opcode, opcodes.OpCodeLdBCD):
-            value = self._registers.get_vx(opcode.register).value
+            value = self._registers.get_vx(opcode.register)
+
             i0 = value // 100
             i1 = (value % 100) // 10
             i2 = (value % 10)
 
-            self._memory.store_memory(self._registers.i, [Byte(i0)])
-            self._memory.store_memory(self._registers.i + 1, [Byte(i1)])
-            self._memory.store_memory(self._registers.i + 2, [Byte(i2)])
+            self._memory.store_memory(self._registers.i, [i0])
+            self._memory.store_memory(self._registers.i + 1, [i1])
+            self._memory.store_memory(self._registers.i + 2, [i2])
 
             self._registers.increment_pc()
 
@@ -323,8 +338,8 @@ class Engine:
             for x in range(opcode.max_register.value + 1):
                 self._memory.store_memory(self._registers.i + x, [self._registers.get_vx(Register(x))])
 
-            if self._quirks._index_increment:
-                self._registers.set_i(self._registers.i + opcode.max_register.value + 1)
+            if self._quirks.index_increment:
+                self._registers.set_i(self._registers.i + opcode.max_register + 1)
 
             self._registers.increment_pc()
 
@@ -333,7 +348,7 @@ class Engine:
                 value = self._memory.read_memory(self._registers.i + x, Byte(1))
                 self._registers.set_vx(Register(x), value[0])
 
-            if self._quirks._index_increment:
-                self._registers.set_i(self._registers.i + opcode.max_register.value + 1)
+            if self._quirks.index_increment:
+                self._registers.set_i(self._registers.i + opcode.max_register + 1)
 
             self._registers.increment_pc()

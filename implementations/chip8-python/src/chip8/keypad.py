@@ -23,7 +23,7 @@ class Keypad:
         self._last_released_key_ticks = 0
 
     def set_kx(self, key: Byte, value: bool) -> None:
-        if key.value < 0 or key.value > 15:
+        if key < 0 or key > 15:
             raise RuntimeError("Unsupported key value")
 
         self._state[key.value] = value
@@ -33,7 +33,7 @@ class Keypad:
             self._last_released_key_ticks = self._ticks
 
     def get_kx(self, key: Byte) -> bool:
-        if key.value < 0 or key.value > 15:
+        if key < 0 or key > 15:
             raise RuntimeError("Unsupported key value")
         return self._state[key.value]
 

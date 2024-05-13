@@ -187,9 +187,9 @@ class OpCodeRnd(BaseOpCode):
 class OpCodeDrw(BaseOpCode):
     CODE = "DRW"
 
-    registerX: Register
-    registerY: Register
-    nibble: Byte
+    register_x: Register
+    register_y: Register
+    height: Byte
 
 
 @dataclass
@@ -345,7 +345,7 @@ def parse_opcode(value: Address) -> BaseOpCode | None:
         return OpCodeRnd(register=Register(b1), byte=Byte(byte_value))
 
     elif b0 == 0xD:
-        return OpCodeDrw(registerX=Register(b1), registerY=Register(b2), nibble=Byte(b3))
+        return OpCodeDrw(register_x=Register(b1), register_y=Register(b2), height=Byte(b3))
 
     elif b0 == 0xE:
         if b2 == 0x9 and b3 == 0xE:
