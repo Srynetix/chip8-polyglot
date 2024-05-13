@@ -25,41 +25,13 @@ class Display:
         return collision
 
     def _draw_line(self, x: int, y: int, value: int, *, clip: bool) -> bool:
-        v = value
-        s0 = (v & 0b1000_0000) >> 7
-        s1 = (v & 0b0100_0000) >> 6
-        s2 = (v & 0b0010_0000) >> 5
-        s3 = (v & 0b0001_0000) >> 4
-        s4 = (v & 0b0000_1000) >> 3
-        s5 = (v & 0b0000_0100) >> 2
-        s6 = (v & 0b0000_0010) >> 1
-        s7 = (v & 0b0000_0001)
+        line_size = 8
 
         global_collision = False
-
-        if self._draw_pixel(x, y, s0, clip=clip):
-            global_collision = True
-
-        if self._draw_pixel(x + 1, y, s1, clip=clip):
-            global_collision = True
-
-        if self._draw_pixel(x + 2, y, s2, clip=clip):
-            global_collision = True
-        
-        if self._draw_pixel(x + 3, y, s3, clip=clip):
-            global_collision = True
-
-        if self._draw_pixel(x + 4, y, s4, clip=clip):
-            global_collision = True
-
-        if self._draw_pixel(x + 5, y, s5, clip=clip):
-            global_collision = True
-
-        if self._draw_pixel(x + 6, y, s6, clip=clip):
-            global_collision = True
-
-        if self._draw_pixel(x + 7, y, s7, clip=clip):
-            global_collision = True
+        for i in range(line_size):
+            pixel_value = (value & (0b1 << (line_size - i - 1))) >> (line_size - i - 1)
+            if self._draw_pixel(x + i, y, pixel_value, clip=clip):
+                global_collision = True
 
         return global_collision
 

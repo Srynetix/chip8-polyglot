@@ -10,6 +10,7 @@ from .stack import Stack
 from .keypad import Keypad
 from .timers import Timers
 from .cartridge import Cartridge
+from .quirks import Quirks
 from .types import Address, Register, Byte
 from . import opcodes
 
@@ -18,21 +19,6 @@ class StepResult(enum.Enum):
     Success = enum.auto()
     Loop = enum.auto()
     BadOpCode = enum.auto()
-
-
-class Quirks:
-    _shift_y: bool
-    _add_i_carry: bool
-    _vf_reset: bool
-    _index_increment: bool
-    _draw_clipping: bool
-
-    def __init__(self) -> None:
-        self._shift_y = True
-        self._add_i_carry = False
-        self._vf_reset = True
-        self._index_increment = True
-        self._draw_clipping = True
 
 
 class Engine:
