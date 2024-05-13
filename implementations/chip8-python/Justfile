@@ -1,0 +1,6 @@
+_all:
+    @just --list
+
+# Run a cartridge.
+run *args:
+    poetry run python src/chip8/gui/main.py {{ args }}
