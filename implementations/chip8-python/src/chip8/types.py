@@ -4,6 +4,10 @@ from random import Random
 class Address:
     value: int
 
+    @classmethod
+    def from_bytes(cls, byte1: "Byte", byte2: "Byte") -> "Address":
+        return Address((byte1.value << 8) + byte2.value)
+
     def __init__(self, value: int) -> None:
         self.value = value % 65536
 

@@ -36,3 +36,5 @@ CI should be setup, with automatic tests, lint and formatting.
 
 - https://github.com/Timendus/chip8-test-suite/
 - https://tobiasvl.github.io/blog/write-a-chip-8-emulator/
+- https://chip-8.github.io/extensions/#super-chip-11
+- http://johnearnest.github.io/Octo/docs/SuperChip.html

@@ -1,6 +1,5 @@
 from typing import ClassVar
 from dataclasses import dataclass
-import enum
 
 from .types import Address, Byte, Register
 
@@ -15,6 +14,46 @@ class OpCodeSys(BaseOpCode):
     CODE = "SYS"
 
     address: Address
+
+
+@dataclass
+class OpCodeHiRes(BaseOpCode):
+    CODE = "HIRES"
+
+
+@dataclass
+class OpCodeLoRes(BaseOpCode):
+    CODE = "LORES"
+
+
+@dataclass
+class OpCodeScrollDown(BaseOpCode):
+    CODE = "SCRLDN"
+
+    height: Byte
+
+
+@dataclass
+class OpCodeScrollRight(BaseOpCode):
+    CODE = "SCRLRT"
+
+
+@dataclass
+class OpCodeScrollLeft(BaseOpCode):
+    CODE = "SCRLLT"
+
+
+@dataclass
+class OpCodeExit(BaseOpCode):
+    CODE = "EXIT"
+
+
+@dataclass
+class OpCodeSuperDrw(BaseOpCode):
+    CODE = "SDRW"
+
+    register_x: Register
+    register_y: Register
 
 
 @dataclass
@@ -169,10 +208,13 @@ class OpCodeLdI(BaseOpCode):
 
 
 @dataclass
-class OpCodeJpV0(BaseOpCode):
-    CODE = "JPV0"
+class OpCodeJpOffset(BaseOpCode):
+    CODE = "JPOF"
 
     address: Address
+
+    # For jump_vx quirk
+    register: Register
 
 
 @dataclass
@@ -249,6 +291,13 @@ class OpCodeLdF(BaseOpCode):
 
 
 @dataclass
+class OpCodeLdSuperF(BaseOpCode):
+    CODE = "LDSF"
+
+    register: Register
+
+
+@dataclass
 class OpCodeLdBCD(BaseOpCode):
     CODE = "LDB"
 
@@ -269,6 +318,20 @@ class OpCodeLdRegRead(BaseOpCode):
     max_register: Register
 
 
+@dataclass
+class OpCodeLdRegStoreUser(BaseOpCode):
+    CODE = "LDRSU"
+
+    max_register: Register
+
+
+@dataclass
+class OpCodeLdRegReadUser(BaseOpCode):
+    CODE = "LDRRU"
+
+    max_register: Register
+
+
 def parse_opcode(value: Address) -> BaseOpCode | None:
     value_inner = value.value
     b0 = (value_inner & 0xf000) >> 12
@@ -280,14 +343,33 @@ def parse_opcode(value: Address) -> BaseOpCode | None:
     byte_value = (b2 << 4) + b3
 
     if b0 == 0x0:
-        if b2 == 0xE and b3 == 0xE:
-            return OpCodeRet()
+        if b2 == 0xE:
+            if b3 == 0xE:
+                return OpCodeRet()
         
-        elif b2 == 0xE and b3 == 0x0:
-            return OpCodeCls()
+            if b3 == 0x0:
+                return OpCodeCls()
         
-        else:
-            return OpCodeSys(address=Address(addr_value))
+        elif b2 == 0xF:
+            if b3 == 0xB:
+                return OpCodeScrollRight()
+            
+            elif b3 == 0xC:
+                return OpCodeScrollLeft()
+            
+            elif b3 == 0xD:
+                return OpCodeExit()
+
+            elif b3 == 0xE:
+                return OpCodeLoRes()
+
+            elif b3 == 0xF:
+                return OpCodeHiRes()
+            
+        elif b2 == 0xC:
+            return OpCodeScrollDown(height=Byte(b3))
+        
+        return OpCodeSys(address=Address(addr_value))
 
     elif b0 == 0x1:
         return OpCodeJp(address=Address(addr_value))
@@ -339,12 +421,14 @@ def parse_opcode(value: Address) -> BaseOpCode | None:
         return OpCodeLdI(address=Address(addr_value))
 
     elif b0 == 0xB:
-        return OpCodeJpV0(address=Address(addr_value))
+        return OpCodeJpOffset(address=Address(addr_value), register=Register(b1))
 
     elif b0 == 0xC:
         return OpCodeRnd(register=Register(b1), byte=Byte(byte_value))
 
     elif b0 == 0xD:
+        if b3 == 0x0:
+            return OpCodeSuperDrw(register_x=Register(b1), register_y=Register(b2))
         return OpCodeDrw(register_x=Register(b1), register_y=Register(b2), height=Byte(b3))
 
     elif b0 == 0xE:
@@ -355,23 +439,28 @@ def parse_opcode(value: Address) -> BaseOpCode | None:
             return OpCodeSknp(register=Register(b1))
 
     elif b0 == 0xF:
-        if b2 == 0x0 and b3 == 0x7:
-            return OpCodeLdDelayRead(register=Register(b1))
+        if b2 == 0x0:
+            if b3 == 0x7:
+                return OpCodeLdDelayRead(register=Register(b1))
 
-        if b2 == 0x0 and b3 == 0xA:
-            return OpCodeLdKey(register=Register(b1))
+            elif b3 == 0xA:
+                return OpCodeLdKey(register=Register(b1))
 
-        if b2 == 0x1 and b3 == 0x5:
-            return OpCodeLdDelayStore(register=Register(b1))
+        if b2 == 0x1:
+            if b3 == 0x5:
+                return OpCodeLdDelayStore(register=Register(b1))
 
-        if b2 == 0x1 and b3 == 0x8:
-            return OpCodeLdSoundStore(register=Register(b1))
+            elif b3 == 0x8:
+                return OpCodeLdSoundStore(register=Register(b1))
 
-        if b2 == 0x1 and b3 == 0xE:
-            return OpCodeAddI(register=Register(b1))
+            elif b3 == 0xE:
+                return OpCodeAddI(register=Register(b1))
 
         if b2 == 0x2 and b3 == 0x9:
             return OpCodeLdF(register=Register(b1))
+        
+        if b2 == 0x3 and b3 == 0x0:
+            return OpCodeLdSuperF(register=Register(b1))
 
         if b2 == 0x3 and b3 == 0x3:
             return OpCodeLdBCD(register=Register(b1))
@@ -381,3 +470,9 @@ def parse_opcode(value: Address) -> BaseOpCode | None:
 
         if b2 == 0x6 and b3 == 0x5:
             return OpCodeLdRegRead(max_register=Register(b1))
+        
+        if b2 == 0x7 and b3 == 0x5:
+            return OpCodeLdRegStoreUser(max_register=Register(b1))
+        
+        if b2 == 0x8 and b3 == 0x5:
+            return OpCodeLdRegReadUser(max_register=Register(b1))

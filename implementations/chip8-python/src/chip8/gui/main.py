@@ -1,4 +1,5 @@
 import logging
+from typing import Annotated, Optional
 from chip8.gui.keyboard import Keyboard
 from chip8.gui.screen import Screen
 import pygame
@@ -6,18 +7,13 @@ from pathlib import Path
 import typer
 
 from chip8.engine import Engine, StepResult
-from chip8.types import Byte
 from chip8.cartridge import Cartridge
 
 from chip8.gui.sound import Tone
-
-
-CYCLES_PER_FRAME = 8  # 8 * 60 => 480 CPS
+from chip8.quirks import QuirksMode
 
 
 def start_gui(engine: Engine) -> None:
-    stepping = True
-
     pygame.init()
     pygame.mixer.init()
     pygame.mixer.set_num_channels(1)
@@ -27,6 +23,7 @@ def start_gui(engine: Engine) -> None:
     clock = pygame.time.Clock()
 
     running = True
+    paused = False
 
     gui_screen = Screen()    
     gui_keyboard = Keyboard()
@@ -34,24 +31,41 @@ def start_gui(engine: Engine) -> None:
     beep_voice = pygame.mixer.Channel(0)
     tone = Tone(frequency=220)
 
-    pixel_surface = pygame.Surface((64, 32))
+    pixel_surface = pygame.Surface((128, 64))
+
+    def on_loop():
+        nonlocal paused
+
+        print("End")
+        paused = True
+
+    def on_hires():
+        # print("HIRES")
+        pass
+
+    def on_lores():
+        # print("LORES")
+        pass
+
+    engine.on_loop.connect(on_loop)
+    engine.on_hires.connect(on_hires)
+    engine.on_lores.connect(on_lores)
 
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
 
+            elif event.type == pygame.KEYDOWN:
+                if event.scancode == pygame.KSCAN_ESCAPE:
+                    running = False
+
             gui_keyboard.process(engine, event)
 
-        for _ in range(CYCLES_PER_FRAME):
-            if stepping:
-                result = engine.step()
-                if result == StepResult.BadOpCode:
-                    raise RuntimeError("Bad opcode")
-                elif result == StepResult.Loop:
-                    print("Loop found, stopping.")
-                    stepping = False
-                    break
+        if not paused:
+            result = engine.step()
+            if result == StepResult.BadOpCode:
+                raise RuntimeError("Bad opcode")
 
         if engine.beeping:
             if not beep_voice.get_busy():
@@ -76,24 +90,50 @@ def main(
         cartridge_path: Path,
         *,
         verbose: bool = False,
-        quirks_shift_y: bool = True,
-        quirks_add_i_carry: bool = False,
-        quirks_vf_reset: bool = True,
-        quirks_index_increment: bool = True,
-        quirks_draw_clipping: bool = True
+        instructions_per_step: Optional[int] = None,
+        # Quirks
+        quirks_shift_y: Optional[bool] = None,
+        quirks_add_i_carry: Optional[bool] = None,
+        quirks_vf_reset: Optional[bool] = None,
+        quirks_jump_vx: Optional[bool] = None,
+        quirks_index_increment: Optional[bool] = None,
+        quirks_draw_clipping: Optional[bool] = None,
+        quirks_legacy_scrolling: Optional[bool] = None,
+        # Quirks mode
+        quirks_mode: Annotated[QuirksMode | None, typer.Option(parser=QuirksMode.parse)] = None
     ):
 
     if verbose:
         logging.basicConfig(level=logging.INFO)
 
     engine = Engine()
-    engine.quirks.shift_y = quirks_shift_y
-    engine.quirks.add_i_carry = quirks_add_i_carry
-    engine.quirks.vf_reset = quirks_vf_reset
-    engine.quirks.index_increment = quirks_index_increment
-    engine.quirks.draw_clipping = quirks_draw_clipping
-
+    
     cartridge = Cartridge.from_path(cartridge_path)
+    auto_detected_mode = cartridge.detect_quirks_mode()
+    print(f"Autodetected execution mode: {auto_detected_mode}")
+    engine.quirks.apply_mode(auto_detected_mode)
+
+    if quirks_shift_y is not None:
+        engine.quirks.shift_y = quirks_shift_y
+    if quirks_add_i_carry is not None:
+        engine.quirks.add_i_carry = quirks_add_i_carry
+    if quirks_vf_reset is not None:
+        engine.quirks.vf_reset = quirks_vf_reset
+    if quirks_jump_vx is not None:
+        engine.quirks.jump_vx = quirks_jump_vx
+    if quirks_index_increment is not None:
+        engine.quirks.index_increment = quirks_index_increment
+    if quirks_draw_clipping is not None:
+        engine.quirks.draw_clipping = quirks_draw_clipping
+    if quirks_legacy_scrolling is not None:
+        engine.quirks.legacy_scrolling = quirks_legacy_scrolling
+
+    if quirks_mode is not None:
+        engine.quirks.apply_mode(quirks_mode)
+
+    if instructions_per_step is not None:
+        engine.set_instructions_per_step(instructions_per_step)
+
     engine.load_cartridge(cartridge)
 
     start_gui(engine)

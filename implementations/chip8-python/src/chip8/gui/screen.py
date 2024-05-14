@@ -9,7 +9,8 @@ class Screen:
     def process(self, engine: Engine, surface: pygame.Surface) -> None:
         surface.fill(LO_COLOR)
 
-        for idx, value in enumerate(engine._display._data):
-            x = idx % engine._display.SCREEN_SIZE_X
-            y = idx // engine._display.SCREEN_SIZE_X
+        screen_x = engine._display.screen_size[0]
+        for idx, value in enumerate(engine._display.pixels):
+            x = idx % screen_x
+            y = idx // screen_x
             surface.set_at((x, y), HI_COLOR if value == 1 else LO_COLOR)

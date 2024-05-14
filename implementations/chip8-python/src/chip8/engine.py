@@ -1,7 +1,8 @@
 import enum
 import logging
 from random import Random
-import time
+
+from .signal import Signal
 
 from .display import Display
 from .font import Font
@@ -26,7 +27,6 @@ class StepResult(enum.Enum):
 
 class Engine:
     _display: Display
-    _font: Font
     _memory: Memory
     _registers: Registers
     _stack: Stack
@@ -35,10 +35,15 @@ class Engine:
     _quirks: Quirks
     _keypad: Keypad
     _ticks: int
+    _instructions_per_step: int
+
+    on_draw: Signal
+    on_loop: Signal
+    on_hires: Signal
+    on_lores: Signal
 
     def __init__(self) -> None:
         self._display = Display()
-        self._font = Font.get_default()
         self._memory = Memory()
         self._registers = Registers()
         self._stack = Stack()
@@ -47,6 +52,12 @@ class Engine:
         self._quirks = Quirks()
         self._timers = Timers()
         self._ticks = 0
+        self._instructions_per_step = 10
+        
+        self.on_draw = Signal()
+        self.on_loop = Signal()
+        self.on_hires = Signal()
+        self.on_lores = Signal()
 
         self.reset()
 
@@ -59,7 +70,8 @@ class Engine:
         self._timers.reset()
         self._ticks = 0
 
-        self._memory.store_font(self._font)
+        self._memory.store_font(Font.get_default())
+        self._memory.store_super_font(Font.get_super_default())
 
     def load_cartridge(self, cartridge: Cartridge) -> None:
         self._memory.store_cartridge(cartridge)
@@ -67,6 +79,13 @@ class Engine:
     def step_timers(self) -> None:
         self._keypad.step()
         self._timers.step()
+
+    def set_instructions_per_step(self, value: int) -> None:
+        self._instructions_per_step = value
+
+    @property
+    def instructions_per_step(self) -> int:
+        return self._instructions_per_step
 
     @property
     def beeping(self) -> bool:
@@ -77,6 +96,19 @@ class Engine:
         return self._quirks
 
     def step(self) -> StepResult:
+        instructions_boost = self._display._mode == self._display.Mode.HIRES
+        instructions_per_step = self._instructions_per_step * 2 if instructions_boost else self._instructions_per_step
+
+        for _ in range(instructions_per_step):
+            res = self._step_instruction()
+            if res == StepResult.BadOpCode:
+                return res
+            elif res == StepResult.Loop:
+                return res
+            
+        return StepResult.Success
+    
+    def _step_instruction(self) -> StepResult:
         # Read opcode
         int_code = self._memory.read_opcode(self._registers.pc)
         code = opcodes.parse_opcode(int_code)
@@ -90,6 +122,7 @@ class Engine:
         if isinstance(code, opcodes.OpCodeJp):
             if code.address == self._registers.pc:
                 # Yep, that's a loop
+                self.on_loop.emit()
                 return StepResult.Loop
 
         self._process_opcode(code)
@@ -97,20 +130,35 @@ class Engine:
 
         return StepResult.Success
 
-    def run_forever(self) -> None:
-        while True:
-            result = self.step()
-            if result != StepResult.Success:
-                raise RuntimeError(result)
-            time.sleep(0.016)
-
     def _process_opcode(self, opcode: opcodes.BaseOpCode) -> None:
         if isinstance(opcode, opcodes.OpCodeSys):
-            print("Unsupported SYS opcode")
+            print(f"Unsupported SYS opcode: {opcode}")
             self._registers.increment_pc()
 
         elif isinstance(opcode, opcodes.OpCodeCls):
-            self._display.reset()
+            self._display.clear()
+            self._registers.increment_pc()
+
+        elif isinstance(opcode, opcodes.OpCodeLoRes):
+            self._display.set_mode(Display.Mode.LORES)
+            self.on_lores.emit()
+            self._registers.increment_pc()
+
+        elif isinstance(opcode, opcodes.OpCodeHiRes):
+            self._display.set_mode(Display.Mode.HIRES)
+            self.on_hires.emit()
+            self._registers.increment_pc()
+
+        elif isinstance(opcode, opcodes.OpCodeScrollLeft):
+            self._display.scroll_left(legacy_mode=self._quirks.legacy_scrolling)
+            self._registers.increment_pc()
+    
+        elif isinstance(opcode, opcodes.OpCodeScrollRight):
+            self._display.scroll_right(legacy_mode=self._quirks.legacy_scrolling)
+            self._registers.increment_pc()
+
+        elif isinstance(opcode, opcodes.OpCodeScrollDown):
+            self._display.scroll_down(opcode.height, legacy_mode=self._quirks.legacy_scrolling)
             self._registers.increment_pc()
 
         elif isinstance(opcode, opcodes.OpCodeRet):
@@ -246,10 +294,14 @@ class Engine:
 
             self._registers.increment_pc()
 
-        elif isinstance(opcode, opcodes.OpCodeJpV0):
-            v0 = self._registers.get_vx(Register(0))
-
-            self._registers.set_pc(opcode.address + v0)
+        elif isinstance(opcode, opcodes.OpCodeJpOffset):
+            if self._quirks.jump_vx:
+                vx = self._registers.get_vx(opcode.register)
+                addr = Address(vx.value) + opcode.address
+            else:
+                v0 = self._registers.get_vx(Register(0))
+                addr = Address(v0.value) + opcode.address
+            self._registers.set_pc(addr)
 
         elif isinstance(opcode, opcodes.OpCodeRnd):
             value = opcode.byte & Byte.random(self._rng)
@@ -260,11 +312,21 @@ class Engine:
         elif isinstance(opcode, opcodes.OpCodeDrw):
             vx = self._registers.get_vx(opcode.register_x)
             vy = self._registers.get_vx(opcode.register_y)
-            mem = self._memory.read_memory(self._registers.i, opcode.height)
+            mem = self._memory.read_memory(self._registers.i, opcode.height.value)
 
             collision = self._display.draw(vx.value, vy.value, mem, clip=self._quirks.draw_clipping)
             self._registers.set_carry(collision)
+            self._registers.increment_pc()
 
+            self.on_draw.emit(screen_size=self._display.screen_size, pixels=self._display.pixels)
+
+        elif isinstance(opcode, opcodes.OpCodeSuperDrw):
+            vx = self._registers.get_vx(opcode.register_x)
+            vy = self._registers.get_vx(opcode.register_y)
+            mem = self._memory.read_memory(self._registers.i, 16 * 2)
+
+            collision = self._display.super_draw(vx.value, vy.value, mem, clip=self._quirks.draw_clipping)
+            self._registers.set_carry(collision)
             self._registers.increment_pc()
 
         elif isinstance(opcode, opcodes.OpCodeSkp):
@@ -316,7 +378,15 @@ class Engine:
         elif isinstance(opcode, opcodes.OpCodeLdF):
             self._registers.set_i(
                 self._memory.FONT_START_LOCATION
-                + Address(opcode.register.value * (Font.SPRITE_WIDTH * Font.SPRITE_HEIGHT))
+                + Address(opcode.register.value * Font.SPRITE_HEIGHT)
+            )
+
+            self._registers.increment_pc()
+
+        elif isinstance(opcode, opcodes.OpCodeLdSuperF):
+            self._registers.set_i(
+                self._memory.SUPER_FONT_START_LOCATION
+                + Address(opcode.register.value * Font.SUPER_SPRITE_HEIGHT)
             )
 
             self._registers.increment_pc()
@@ -345,10 +415,23 @@ class Engine:
 
         elif isinstance(opcode, opcodes.OpCodeLdRegRead):
             for x in range(opcode.max_register.value + 1):
-                value = self._memory.read_memory(self._registers.i + x, Byte(1))
+                value = self._memory.read_memory(self._registers.i + x, 1)
                 self._registers.set_vx(Register(x), value[0])
 
             if self._quirks.index_increment:
                 self._registers.set_i(self._registers.i + opcode.max_register + 1)
+
+            self._registers.increment_pc()
+
+        elif isinstance(opcode, opcodes.OpCodeLdRegStoreUser):
+            for x in range(opcode.max_register.value + 1):
+                value = self._memory.store_local_storage(self._registers.i + x, [self._registers.get_vx(Register(x))])
+
+            self._registers.increment_pc()
+
+        elif isinstance(opcode, opcodes.OpCodeLdRegReadUser):
+            for x in range(opcode.max_register.value + 1):
+                value = self._memory.read_local_storage(self._registers.i + x, 1)
+                self._registers.set_vx(Register(x), value[0])
 
             self._registers.increment_pc()
