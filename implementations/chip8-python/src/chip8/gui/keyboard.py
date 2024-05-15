@@ -32,4 +32,3 @@ class Keyboard:
         if event.type == pygame.KEYUP:
             if event.scancode in KEY_MAP.keys():
                 engine._keypad.set_kx(Byte(KEY_MAP[event.scancode]), False)
-

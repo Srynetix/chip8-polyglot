@@ -43,13 +43,13 @@ class Memory:
         self.store_memory(self.SUPER_FONT_START_LOCATION, font._data)
 
     def read_memory(self, start: Address, count: int) -> list[Byte]:
-        return self._data[start.value:start.value + count]
-    
+        return self._data[start.value : start.value + count]
+
     def read_local_storage(self, start: Address, count: int) -> list[Byte]:
-        return self._local_storage[start.value:start.value + count]
+        return self._local_storage[start.value : start.value + count]
 
     def read_opcode(self, start: Address) -> Address:
-        code_array = self._data[start.value:start.value + 2]
+        code_array = self._data[start.value : start.value + 2]
         return Address((code_array[0].value << 8) + code_array[1].value)
 
     def store_cartridge(self, cartridge: Cartridge) -> None:

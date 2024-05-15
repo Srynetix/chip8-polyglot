@@ -1,215 +1,217 @@
-from typing import ClassVar
 from dataclasses import dataclass
 
 from .types import Address, Byte, Register
 
 
-@dataclass
-class BaseOpCode:
-    CODE: ClassVar[str]
+class OpCode:
+    pass
 
 
 @dataclass
-class OpCodeSys(BaseOpCode):
-    CODE = "SYS"
+class SYS(OpCode):
+    """SYS (0NNN) - Execute a system instruction NNN."""
 
     address: Address
 
 
 @dataclass
-class OpCodeHiRes(BaseOpCode):
-    CODE = "HIRES"
+class HIRES(OpCode):
+    """HIRES (00FF) - Change the display to higher resolution (S-CHIP only)."""
 
 
 @dataclass
-class OpCodeLoRes(BaseOpCode):
-    CODE = "LORES"
+class LORES(OpCode):
+    """LORES (00FE) - Change the display to lower resolution (S-CHIP only)."""
 
 
 @dataclass
-class OpCodeScrollDown(BaseOpCode):
-    CODE = "SCRLDN"
+class SCRLDWN(OpCode):
+    """SCRLDWN (00CN) - Scroll down N lines (S-CHIP only)."""
 
     height: Byte
 
 
 @dataclass
-class OpCodeScrollRight(BaseOpCode):
-    CODE = "SCRLRT"
+class SCRLRGHT(OpCode):
+    """SCRLRGHT (OOFB) - Scroll right (S-CHIP only)."""
 
 
 @dataclass
-class OpCodeScrollLeft(BaseOpCode):
-    CODE = "SCRLLT"
+class SCRLLFT(OpCode):
+    """SCRLLFT (00FC) - Scroll left (S-CHIP only)."""
 
 
 @dataclass
-class OpCodeExit(BaseOpCode):
-    CODE = "EXIT"
+class EXIT(OpCode):
+    """EXIT (00FD) - Exit interpreter (S-CHIP only)."""
 
 
 @dataclass
-class OpCodeSuperDrw(BaseOpCode):
-    CODE = "SDRW"
+class SDRW(OpCode):
+    """SDRW (DXY0) - Draw a 16x16 sprite (S-CHIP only)."""
 
     register_x: Register
     register_y: Register
 
 
 @dataclass
-class OpCodeCls(BaseOpCode):
-    CODE = "CLS"
+class CLS(OpCode):
+    """CLS (00E0) - Clear screen."""
 
 
 @dataclass
-class OpCodeRet(BaseOpCode):
-    CODE = "RET"
+class RET(OpCode):
+    """RET (00EE) - Return from procedure."""
 
 
 @dataclass
-class OpCodeJp(BaseOpCode):
-    CODE = "JP"
+class JP(OpCode):
+    """JP (1NNN) - Jump to address NNN."""
 
     address: Address
 
 
 @dataclass
-class OpCodeCall(BaseOpCode):
-    CODE = "CALL"
+class CALL(OpCode):
+    """CALL (2NNN) - Push PC to stack and jump to address NNN."""
 
     address: Address
 
 
 @dataclass
-class OpCodeSeByte(BaseOpCode):
-    CODE = "SEB"
+class SEB(OpCode):
+    """SEB (3XNN) - Jump if VX == byte NN."""
 
     register: Register
     byte: Byte
 
 
 @dataclass
-class OpCodeSneByte(BaseOpCode):
-    CODE = "SNEB"
+class SNEB(OpCode):
+    """SNEB (4XNN) - Jump if VX != byte NN."""
 
     register: Register
     byte: Byte
 
 
 @dataclass
-class OpCodeSe(BaseOpCode):
-    CODE = "SE"
+class SE(OpCode):
+    """SE (5XY0) - Jump if VX == VY."""
 
     register1: Register
     register2: Register
 
 
 @dataclass
-class OpCodeLdByte(BaseOpCode):
-    CODE = "LDB"
+class LDB(OpCode):
+    """LDB (6XNN) - VX = byte NN."""
 
     register: Register
     byte: Byte
 
 
 @dataclass
-class OpCodeAddByte(BaseOpCode):
-    CODE = "ADDB"
+class ADDB(OpCode):
+    """ADDB (7XNN) - VX += byte NN."""
 
     register: Register
     byte: Byte
 
 
 @dataclass
-class OpCodeLd(BaseOpCode):
-    CODE = "LD"
+class LD(OpCode):
+    """LD (8XY0) - VX = VY."""
 
     register1: Register
     register2: Register
 
 
 @dataclass
-class OpCodeOr(BaseOpCode):
-    CODE = "OR"
+class OR(OpCode):
+    """OR (8XY1) - VX = VX | VY."""
 
     register1: Register
     register2: Register
 
 
 @dataclass
-class OpCodeAnd(BaseOpCode):
-    CODE = "AND"
+class AND(OpCode):
+    """AND (8XY2) - VX = VX & VY."""
 
     register1: Register
     register2: Register
 
 
 @dataclass
-class OpCodeXor(BaseOpCode):
-    CODE = "XOR"
+class XOR(OpCode):
+    """XOR (8XY3) - VX = VX ^ VY."""
 
     register1: Register
     register2: Register
 
 
 @dataclass
-class OpCodeAdd(BaseOpCode):
-    CODE = "ADD"
+class ADD(OpCode):
+    """ADD (8XY4) - VX = VX + VY."""
 
     register1: Register
     register2: Register
 
 
 @dataclass
-class OpCodeSub(BaseOpCode):
-    CODE = "SUB"
+class SUB(OpCode):
+    """SUB (8XY5) - VX = VX - VY."""
 
     register1: Register
     register2: Register
 
 
 @dataclass
-class OpCodeShiftRight(BaseOpCode):
-    CODE = "SHR"
+class SHR(OpCode):
+    """SHR (8XY6) - VX = VX >> VY."""
 
     register1: Register
     register2: Register
 
 
 @dataclass
-class OpCodeSubInv(BaseOpCode):
-    CODE = "SUBN"
+class SUBN(OpCode):
+    """SUBN (8XY7) - VX = VY - VX."""
 
     register1: Register
     register2: Register
 
 
 @dataclass
-class OpCodeShiftLeft(BaseOpCode):
-    CODE = "SHL"
+class SHL(OpCode):
+    """SHL (8XYF) - VX = VX << VY."""
 
     register1: Register
     register2: Register
 
 
 @dataclass
-class OpCodeSne(BaseOpCode):
-    CODE = "SNE"
+class SNE(OpCode):
+    """SNE (9XY0) - Jump if VX != VY."""
 
     register1: Register
     register2: Register
 
 
 @dataclass
-class OpCodeLdI(BaseOpCode):
-    CODE = "LDI"
+class LDI(OpCode):
+    """LDI (ANNN) - I = address NNN."""
 
     address: Address
 
 
 @dataclass
-class OpCodeJpOffset(BaseOpCode):
-    CODE = "JPOF"
+class JPOFST(OpCode):
+    """JPOFST (BNNN) - Jump to address NNN + register V0.
+
+    Has a quirk (jump_vx) in the form (BXNN), which does a jump
+    to address NNN + register VX.
+    """
 
     address: Address
 
@@ -218,16 +220,16 @@ class OpCodeJpOffset(BaseOpCode):
 
 
 @dataclass
-class OpCodeRnd(BaseOpCode):
-    CODE = "RND"
+class RND(OpCode):
+    """RND (CXNN) - VX = (rand() % 256) | byte NN."""
 
     register: Register
     byte: Byte
 
 
 @dataclass
-class OpCodeDrw(BaseOpCode):
-    CODE = "DRW"
+class DRW(OpCode):
+    """DRW (DXYN) - Draw a sprite of height N at coordinates VX and VY."""
 
     register_x: Register
     register_y: Register
@@ -235,109 +237,112 @@ class OpCodeDrw(BaseOpCode):
 
 
 @dataclass
-class OpCodeSkp(BaseOpCode):
-    CODE = "SKP"
+class SKP(OpCode):
+    """SKP (EX9E) - Skip to next instruction if key KX is pressed."""
 
     register: Register
 
 
 @dataclass
-class OpCodeSknp(BaseOpCode):
-    CODE = "SKNP"
+class SKNP(OpCode):
+    """SKNP (EXA1) - Skip to next instruction if key KX is NOT pressed."""
 
     register: Register
 
 
 @dataclass
-class OpCodeLdDelayRead(BaseOpCode):
-    CODE = "LDDR"
+class LDLY(OpCode):
+    """LDLY (FX07) - VX = Delay timer."""
 
     register: Register
 
 
 @dataclass
-class OpCodeLdKey(BaseOpCode):
-    CODE = "LDK"
+class LDK(OpCode):
+    """LDK (FX0A) - VX = Released key.
+
+    Should not increment PC while no key is released.
+    """
 
     register: Register
 
 
 @dataclass
-class OpCodeLdDelayStore(BaseOpCode):
-    CODE = "LDDS"
+class SDLY(OpCode):
+    """SDLY (FX15) - Delay timer = VX."""
 
     register: Register
 
 
 @dataclass
-class OpCodeLdSoundStore(BaseOpCode):
-    CODE = "LDSS"
+class SSND(OpCode):
+    """SSND (FX18) - Sound timer = VX."""
 
     register: Register
 
 
 @dataclass
-class OpCodeAddI(BaseOpCode):
-    CODE = "ADDI"
+class ADDI(OpCode):
+    """ADDI (FX1E) - I += VX."""
 
     register: Register
 
 
 @dataclass
-class OpCodeLdF(BaseOpCode):
-    CODE = "LDF"
+class LDF(OpCode):
+    """LDF (FX29) - I = font for hex character X."""
 
     register: Register
 
 
 @dataclass
-class OpCodeLdSuperF(BaseOpCode):
-    CODE = "LDSF"
+class SLDF(OpCode):
+    """SLDF (FX30) - I = super font for hex character X (S-CHIP only)."""
 
     register: Register
 
 
 @dataclass
-class OpCodeLdBCD(BaseOpCode):
-    CODE = "LDB"
+class LDBCD(OpCode):
+    """LDBCD (FX33) - (I, I + 1, I + 2) = BCD(VX)."""
 
     register: Register
 
 
 @dataclass
-class OpCodeLdRegStore(BaseOpCode):
-    CODE = "LDRS"
+class SRG(OpCode):
+    """SRG (FX55) - Store V0 to VX in (I..I+X)."""
 
     max_register: Register
 
 
 @dataclass
-class OpCodeLdRegRead(BaseOpCode):
-    CODE = "LDRR"
+class LRG(OpCode):
+    """LRG (FX65) - Load V0 to VX from (I..I+X)."""
 
     max_register: Register
 
 
 @dataclass
-class OpCodeLdRegStoreUser(BaseOpCode):
-    CODE = "LDRSU"
+class SRGF(OpCode):
+    """SRGF (FX75) - Store V0 to VX in flag registers."""
 
     max_register: Register
 
 
 @dataclass
-class OpCodeLdRegReadUser(BaseOpCode):
-    CODE = "LDRRU"
+class LRGF(OpCode):
+    """LRGF (FX85) - Load V0 to VX from flag registers."""
 
     max_register: Register
 
 
-def parse_opcode(value: Address) -> BaseOpCode | None:
+def parse_opcode(value: Address) -> OpCode | None:
     value_inner = value.value
-    b0 = (value_inner & 0xf000) >> 12
-    b1 = (value_inner & 0x0f00) >> 8
-    b2 = (value_inner & 0x00f0) >> 4
-    b3 = value_inner & 0x000f
+    b0 = (value_inner & 0xF000) >> 12
+    b1 = (value_inner & 0x0F00) >> 8
+    b2 = (value_inner & 0x00F0) >> 4
+    b3 = value_inner & 0x000F
 
     addr_value = (b1 << 8) + (b2 << 4) + b3
     byte_value = (b2 << 4) + b3
@@ -345,134 +350,134 @@ def parse_opcode(value: Address) -> BaseOpCode | None:
     if b0 == 0x0:
         if b2 == 0xE:
             if b3 == 0xE:
-                return OpCodeRet()
-        
+                return RET()
+
             if b3 == 0x0:
-                return OpCodeCls()
-        
+                return CLS()
+
         elif b2 == 0xF:
             if b3 == 0xB:
-                return OpCodeScrollRight()
-            
+                return SCRLRGHT()
+
             elif b3 == 0xC:
-                return OpCodeScrollLeft()
-            
+                return SCRLLFT()
+
             elif b3 == 0xD:
-                return OpCodeExit()
+                return EXIT()
 
             elif b3 == 0xE:
-                return OpCodeLoRes()
+                return LORES()
 
             elif b3 == 0xF:
-                return OpCodeHiRes()
-            
+                return HIRES()
+
         elif b2 == 0xC:
-            return OpCodeScrollDown(height=Byte(b3))
-        
-        return OpCodeSys(address=Address(addr_value))
+            return SCRLDWN(height=Byte(b3))
+
+        return SYS(address=Address(addr_value))
 
     elif b0 == 0x1:
-        return OpCodeJp(address=Address(addr_value))
+        return JP(address=Address(addr_value))
 
     elif b0 == 0x2:
-        return OpCodeCall(address=Address(addr_value))
+        return CALL(address=Address(addr_value))
 
     elif b0 == 0x3:
-        return OpCodeSeByte(register=Register(b1), byte=Byte(byte_value))
+        return SEB(register=Register(b1), byte=Byte(byte_value))
 
     elif b0 == 0x4:
-        return OpCodeSneByte(register=Register(b1), byte=Byte(byte_value))
-    
+        return SNEB(register=Register(b1), byte=Byte(byte_value))
+
     elif b0 == 0x5:
         if b3 == 0x0:
-            return OpCodeSe(register1=Register(b1), register2=Register(b2))
+            return SE(register1=Register(b1), register2=Register(b2))
 
     elif b0 == 0x6:
-        return OpCodeLdByte(register=Register(b1), byte=Byte(byte_value))
+        return LDB(register=Register(b1), byte=Byte(byte_value))
 
     elif b0 == 0x7:
-        return OpCodeAddByte(register=Register(b1), byte=Byte(byte_value))
+        return ADDB(register=Register(b1), byte=Byte(byte_value))
 
     elif b0 == 0x8:
         if b3 == 0x0:
-            return OpCodeLd(register1=Register(b1), register2=Register(b2))
+            return LD(register1=Register(b1), register2=Register(b2))
         elif b3 == 0x1:
-            return OpCodeOr(register1=Register(b1), register2=Register(b2))
+            return OR(register1=Register(b1), register2=Register(b2))
         elif b3 == 0x2:
-            return OpCodeAnd(register1=Register(b1), register2=Register(b2))
+            return AND(register1=Register(b1), register2=Register(b2))
         elif b3 == 0x3:
-            return OpCodeXor(register1=Register(b1), register2=Register(b2))
+            return XOR(register1=Register(b1), register2=Register(b2))
         elif b3 == 0x4:
-            return OpCodeAdd(register1=Register(b1), register2=Register(b2))
+            return ADD(register1=Register(b1), register2=Register(b2))
         elif b3 == 0x5:
-            return OpCodeSub(register1=Register(b1), register2=Register(b2))
+            return SUB(register1=Register(b1), register2=Register(b2))
         elif b3 == 0x6:
-            return OpCodeShiftRight(register1=Register(b1), register2=Register(b2))
+            return SHR(register1=Register(b1), register2=Register(b2))
         elif b3 == 0x7:
-            return OpCodeSubInv(register1=Register(b1), register2=Register(b2))
+            return SUBN(register1=Register(b1), register2=Register(b2))
         elif b3 == 0xE:
-            return OpCodeShiftLeft(register1=Register(b1), register2=Register(b2))
+            return SHL(register1=Register(b1), register2=Register(b2))
 
     elif b0 == 0x9:
         if b3 == 0x0:
-            return OpCodeSne(register1=Register(b1), register2=Register(b2))
+            return SNE(register1=Register(b1), register2=Register(b2))
 
     elif b0 == 0xA:
-        return OpCodeLdI(address=Address(addr_value))
+        return LDI(address=Address(addr_value))
 
     elif b0 == 0xB:
-        return OpCodeJpOffset(address=Address(addr_value), register=Register(b1))
+        return JPOFST(address=Address(addr_value), register=Register(b1))
 
     elif b0 == 0xC:
-        return OpCodeRnd(register=Register(b1), byte=Byte(byte_value))
+        return RND(register=Register(b1), byte=Byte(byte_value))
 
     elif b0 == 0xD:
         if b3 == 0x0:
-            return OpCodeSuperDrw(register_x=Register(b1), register_y=Register(b2))
-        return OpCodeDrw(register_x=Register(b1), register_y=Register(b2), height=Byte(b3))
+            return SDRW(register_x=Register(b1), register_y=Register(b2))
+        return DRW(register_x=Register(b1), register_y=Register(b2), height=Byte(b3))
 
     elif b0 == 0xE:
         if b2 == 0x9 and b3 == 0xE:
-            return OpCodeSkp(register=Register(b1))
+            return SKP(register=Register(b1))
 
         elif b2 == 0xA and b3 == 0x1:
-            return OpCodeSknp(register=Register(b1))
+            return SKNP(register=Register(b1))
 
     elif b0 == 0xF:
         if b2 == 0x0:
             if b3 == 0x7:
-                return OpCodeLdDelayRead(register=Register(b1))
+                return LDLY(register=Register(b1))
 
             elif b3 == 0xA:
-                return OpCodeLdKey(register=Register(b1))
+                return LDK(register=Register(b1))
 
         if b2 == 0x1:
             if b3 == 0x5:
-                return OpCodeLdDelayStore(register=Register(b1))
+                return SDLY(register=Register(b1))
 
             elif b3 == 0x8:
-                return OpCodeLdSoundStore(register=Register(b1))
+                return SSND(register=Register(b1))
 
             elif b3 == 0xE:
-                return OpCodeAddI(register=Register(b1))
+                return ADDI(register=Register(b1))
 
         if b2 == 0x2 and b3 == 0x9:
-            return OpCodeLdF(register=Register(b1))
-        
+            return LDF(register=Register(b1))
+
         if b2 == 0x3 and b3 == 0x0:
-            return OpCodeLdSuperF(register=Register(b1))
+            return SLDF(register=Register(b1))
 
         if b2 == 0x3 and b3 == 0x3:
-            return OpCodeLdBCD(register=Register(b1))
+            return LDBCD(register=Register(b1))
 
         if b2 == 0x5 and b3 == 0x5:
-            return OpCodeLdRegStore(max_register=Register(b1))
+            return SRG(max_register=Register(b1))
 
         if b2 == 0x6 and b3 == 0x5:
-            return OpCodeLdRegRead(max_register=Register(b1))
-        
+            return LRG(max_register=Register(b1))
+
         if b2 == 0x7 and b3 == 0x5:
-            return OpCodeLdRegStoreUser(max_register=Register(b1))
-        
+            return SRGF(max_register=Register(b1))
+
         if b2 == 0x8 and b3 == 0x5:
-            return OpCodeLdRegReadUser(max_register=Register(b1))
+            return LRGF(max_register=Register(b1))

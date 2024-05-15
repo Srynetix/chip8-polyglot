@@ -3,7 +3,7 @@ import enum
 
 class QuirksMode(enum.StrEnum):
     Chip8 = "chip-8"
-    SuperChipModern = "schip" 
+    SuperChipModern = "schip"
     SuperChipLegacy = "schip-legacy"
     XoChip = "xochip"
 

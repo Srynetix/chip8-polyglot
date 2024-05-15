@@ -25,7 +25,7 @@ def start_gui(engine: Engine) -> None:
     running = True
     paused = False
 
-    gui_screen = Screen()    
+    gui_screen = Screen()
     gui_keyboard = Keyboard()
 
     beep_voice = pygame.mixer.Channel(0)
@@ -39,17 +39,14 @@ def start_gui(engine: Engine) -> None:
         print("End")
         paused = True
 
-    def on_hires():
-        # print("HIRES")
-        pass
+    def on_exit():
+        nonlocal paused
 
-    def on_lores():
-        # print("LORES")
-        pass
+        print("Exit")
+        paused = True
 
     engine.on_loop.connect(on_loop)
-    engine.on_hires.connect(on_hires)
-    engine.on_lores.connect(on_lores)
+    engine.on_exit.connect(on_exit)
 
     while running:
         for event in pygame.event.get():
@@ -87,27 +84,28 @@ def start_gui(engine: Engine) -> None:
 
 
 def main(
-        cartridge_path: Path,
-        *,
-        verbose: bool = False,
-        instructions_per_step: Optional[int] = None,
-        # Quirks
-        quirks_shift_y: Optional[bool] = None,
-        quirks_add_i_carry: Optional[bool] = None,
-        quirks_vf_reset: Optional[bool] = None,
-        quirks_jump_vx: Optional[bool] = None,
-        quirks_index_increment: Optional[bool] = None,
-        quirks_draw_clipping: Optional[bool] = None,
-        quirks_legacy_scrolling: Optional[bool] = None,
-        # Quirks mode
-        quirks_mode: Annotated[QuirksMode | None, typer.Option(parser=QuirksMode.parse)] = None
-    ):
-
+    cartridge_path: Path,
+    *,
+    verbose: bool = False,
+    instructions_per_step: Optional[int] = None,
+    # Quirks
+    quirks_shift_y: Optional[bool] = None,
+    quirks_add_i_carry: Optional[bool] = None,
+    quirks_vf_reset: Optional[bool] = None,
+    quirks_jump_vx: Optional[bool] = None,
+    quirks_index_increment: Optional[bool] = None,
+    quirks_draw_clipping: Optional[bool] = None,
+    quirks_legacy_scrolling: Optional[bool] = None,
+    # Quirks mode
+    quirks_mode: Annotated[
+        QuirksMode | None, typer.Option(parser=QuirksMode.parse)
+    ] = None,
+):
     if verbose:
         logging.basicConfig(level=logging.INFO)
 
     engine = Engine()
-    
+
     cartridge = Cartridge.from_path(cartridge_path)
     auto_detected_mode = cartridge.detect_quirks_mode()
     print(f"Autodetected execution mode: {auto_detected_mode}")

@@ -55,7 +55,7 @@ class Registers:
     def set_vx(self, index: Register, value: Byte) -> None:
         if index > self.GENERAL_REGISTER_COUNT:
             raise RuntimeError("Unsupported general register.")
-        
+
         prev_vx = self._general[index.value]
         self._general[index.value] = value
         logger.info(f" [set_vx({index}, {value})] {prev_vx} -> {value}")

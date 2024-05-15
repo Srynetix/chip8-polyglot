@@ -1,5 +1,6 @@
 from .types import Byte
 
+
 class Keypad:
     KEYS_COUNT = 16
     RELEASE_TICKS = 2
@@ -38,6 +39,9 @@ class Keypad:
         return self._state[key.value]
 
     def step(self) -> None:
-        if self._last_released_key and self._ticks - self._last_released_key_ticks > self.RELEASE_TICKS:
+        if (
+            self._last_released_key
+            and self._ticks - self._last_released_key_ticks > self.RELEASE_TICKS
+        ):
             self._last_released_key = None
         self._ticks += 1

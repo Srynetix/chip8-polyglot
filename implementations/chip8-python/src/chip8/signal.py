@@ -10,7 +10,7 @@ class Signal:
 
     def connect(self, callback: Callable[..., Any]) -> None:
         self._callbacks.append(weakref.ref(callback))
-        
+
     def emit(self, **kwargs) -> None:
         for callback in self._callbacks:
             cb_obj = callback()

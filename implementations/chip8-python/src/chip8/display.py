@@ -10,22 +10,15 @@ class Display:
         LORES = "lores"
         HIRES = "hires"
 
-    SCREEN_SIZE = (
-        SCREEN_SIZE_X,
-        SCREEN_SIZE_Y
-    ) = (128, 64)
+    SCREEN_SIZE = (SCREEN_SIZE_X, SCREEN_SIZE_Y) = (128, 64)
 
     @property
-    def screen_size(self) -> tuple[int, int]:
-        return self.SCREEN_SIZE
-        
-    @property
-    def pixels(self) -> list[int]:
+    def data(self) -> list[int]:
         return self._data
-        
+
     def set_mode(self, mode: Mode) -> None:
         self._mode = mode
-        
+
     _data: list[int]
     _mode: Mode
 
@@ -47,19 +40,26 @@ class Display:
     def draw(self, x: int, y: int, sprite: list[Byte], *, clip: bool = True) -> bool:
         factor = self._draw_factor()
 
-        screen_x, screen_y = self.screen_size
-        if x * factor >= screen_x or y * factor >= screen_y:
+        if x * factor >= self.SCREEN_SIZE_X or y * factor >= self.SCREEN_SIZE_Y:
             # Disable clipping if initially out of bounds
             clip = False
 
         collision = False
         for line_idx, line in enumerate(sprite):
-            if self._draw_line(x * factor, y * factor + line_idx * factor, line.value, factor=factor, clip=clip):
+            if self._draw_line(
+                x * factor,
+                y * factor + line_idx * factor,
+                line.value,
+                factor=factor,
+                clip=clip,
+            ):
                 collision = True
 
         return collision
-    
-    def super_draw(self, x: int, y: int, sprite: list[Byte], *, clip: bool = True) -> bool:
+
+    def super_draw(
+        self, x: int, y: int, sprite: list[Byte], *, clip: bool = True
+    ) -> bool:
         if x >= self.SCREEN_SIZE_X or y >= self.SCREEN_SIZE_Y:
             clip = False
 
@@ -104,7 +104,11 @@ class Display:
             for x in range(self.SCREEN_SIZE_X):
                 src_index = self._xy_to_index(x, y)
                 dst_index = self._xy_to_index(x + amount, y)
-                self._data[src_index] = self._data[dst_index] if dst_index < self.SCREEN_SIZE_X * self.SCREEN_SIZE_Y else 0
+                self._data[src_index] = (
+                    self._data[dst_index]
+                    if dst_index < self.SCREEN_SIZE_X * self.SCREEN_SIZE_Y
+                    else 0
+                )
 
     def scroll_down(self, amount: Byte, *, legacy_mode: bool) -> None:
         assert amount >= 0 and amount < 16
@@ -118,29 +122,35 @@ class Display:
                 src_index = self._xy_to_index(x, y)
                 dst_index = self._xy_to_index(x, y - amount.value)
                 self._data[src_index] = self._data[dst_index] if dst_index >= 0 else 0
-    
-    def _draw_line(self, x: int, y: int, value: int, *, factor: int, clip: bool) -> bool:
+
+    def _draw_line(
+        self, x: int, y: int, value: int, *, factor: int, clip: bool
+    ) -> bool:
         line_size = 8
 
         global_collision = False
         for i in range(line_size):
             pixel_value = (value & (0b1 << (line_size - i - 1))) >> (line_size - i - 1)
-            if self._draw_pixel(x + i * factor, y, pixel_value, factor=factor, clip=clip):
+            if self._draw_pixel(
+                x + i * factor, y, pixel_value, factor=factor, clip=clip
+            ):
                 global_collision = True
 
         return global_collision
 
-    def _draw_pixel(self, x: int, y: int, value: int, *, factor: int, clip: bool) -> bool:
-        screen_x, screen_y = self.screen_size
-
-        if clip and (x >= screen_x or y >= screen_y):
+    def _draw_pixel(
+        self, x: int, y: int, value: int, *, factor: int, clip: bool
+    ) -> bool:
+        if clip and (x >= self.SCREEN_SIZE_X or y >= self.SCREEN_SIZE_Y):
             return False
 
         collision = False
 
         for oy in range(factor):
             for ox in range(factor):
-                index = self._xy_to_index((x + ox) % screen_x, (y + oy) % screen_y)
+                index = self._xy_to_index(
+                    (x + ox) % self.SCREEN_SIZE_X, (y + oy) % self.SCREEN_SIZE_Y
+                )
                 existing = self._data[index]
                 if existing == 1 and value == 1:
                     collision = True
@@ -150,4 +160,4 @@ class Display:
         return collision
 
     def _xy_to_index(self, x: int, y: int) -> int:
-        return x + y * self.screen_size[0]
+        return x + y * self.SCREEN_SIZE_X

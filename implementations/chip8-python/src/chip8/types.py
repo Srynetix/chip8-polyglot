@@ -13,7 +13,7 @@ class Address:
 
     def __repr__(self) -> str:
         return f"Address({self})"
-    
+
     def __str__(self) -> str:
         return f"&{hex(self.value).upper()}"
 
@@ -23,7 +23,7 @@ class Address:
         elif isinstance(other, (Address, Byte, Register)):
             return Address(self.value + other.value)
         raise RuntimeError("Could not add address")
-    
+
     def __sub__(self, other) -> "Address":
         if isinstance(other, int):
             return Address(self.value - other)
@@ -65,7 +65,7 @@ class Address:
         elif isinstance(other, (Address, Byte, Register)):
             return self.value == other.value
         raise RuntimeError("Could not compare address")
-    
+
 
 class Register:
     value: int
@@ -87,7 +87,7 @@ class Register:
         elif isinstance(other, (Address, Byte, Register)):
             return Register(self.value + other.value)
         raise RuntimeError("Could not add register")
-    
+
     def __sub__(self, other) -> "Register":
         if isinstance(other, int):
             return Register(self.value - other)
@@ -122,7 +122,7 @@ class Register:
         elif isinstance(other, (Address, Byte, Register)):
             return self.value == other.value
         raise RuntimeError("Could not compare register")
-    
+
 
 class Byte:
     value: int
@@ -156,28 +156,28 @@ class Byte:
         elif isinstance(other, Byte):
             return Byte(self.value ^ other.value)
         raise RuntimeError("Could not binary-xor byte")
-        
+
     def __add__(self, other) -> "Byte":
         if isinstance(other, int):
             return Byte(self.value + other)
         elif isinstance(other, (Address, Byte, Register)):
             return Byte(self.value + other.value)
         raise RuntimeError("Could not add byte")
-    
+
     def __sub__(self, other) -> "Byte":
         if isinstance(other, int):
             return Byte(self.value - other)
         elif isinstance(other, (Address, Byte, Register)):
             return Byte(self.value - other.value)
         raise RuntimeError("Could not subtract byte")
-    
+
     def __mul__(self, other) -> "Byte":
         if isinstance(other, int):
             return Byte(self.value * other)
         elif isinstance(other, (Address, Byte, Register)):
             return Byte(self.value * other.value)
         raise RuntimeError("Could not multiply byte")
-    
+
     def __gt__(self, other) -> bool:
         if isinstance(other, int):
             return self.value > other
@@ -191,35 +191,35 @@ class Byte:
         elif isinstance(other, (Address, Byte, Register)):
             return self.value < other.value
         raise RuntimeError("Could not compare byte")
-    
+
     def __eq__(self, other) -> bool:
         if isinstance(other, int):
             return self.value == other
         elif isinstance(other, (Address, Byte, Register)):
             return self.value == other.value
         raise RuntimeError("Could not compare byte")
-    
+
     def __ge__(self, other) -> bool:
         if isinstance(other, int):
             return self.value >= other
         elif isinstance(other, (Address, Byte, Register)):
             return self.value >= other.value
         raise RuntimeError("Could not compare byte")
-    
+
     def __floordiv__(self, other) -> "Byte":
         if isinstance(other, int):
             return Byte(self.value // other)
         elif isinstance(other, (Address, Byte, Register)):
             return Byte(self.value // other.value)
         raise RuntimeError("Could not divide byte")
-    
+
     def __mod__(self, other) -> "Byte":
         if isinstance(other, int):
             return Byte(self.value % other)
         elif isinstance(other, (Address, Byte, Register)):
             return Byte(self.value % other.value)
         raise RuntimeError("Could not mod byte")
-    
+
     @classmethod
     def random(cls, rng: Random) -> "Byte":
         return cls(rng.randint(0, 256))
