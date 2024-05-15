@@ -20,6 +20,7 @@ class Quirks:
     draw_clipping: bool
     jump_vx: bool
     legacy_scrolling: bool
+    display_wait: bool
 
     def __init__(self) -> None:
         self.shift_y = True
@@ -29,6 +30,7 @@ class Quirks:
         self.draw_clipping = True
         self.jump_vx = False
         self.legacy_scrolling = False
+        self.display_wait = False
 
     def apply_mode(self, mode: QuirksMode) -> None:
         if mode == QuirksMode.Chip8:
@@ -39,6 +41,7 @@ class Quirks:
             self.draw_clipping = True
             self.jump_vx = False
             self.legacy_scrolling = False
+            self.display_wait = True
 
         elif mode == QuirksMode.SuperChipModern:
             self.shift_y = False
@@ -48,6 +51,7 @@ class Quirks:
             self.draw_clipping = True
             self.jump_vx = True
             self.legacy_scrolling = False
+            self.display_wait = False
 
         elif mode == QuirksMode.SuperChipLegacy:
             self.shift_y = False
@@ -57,6 +61,7 @@ class Quirks:
             self.draw_clipping = True
             self.jump_vx = True
             self.legacy_scrolling = True
+            self.display_wait = True
 
         elif mode == QuirksMode.XoChip:
             raise NotImplementedError()

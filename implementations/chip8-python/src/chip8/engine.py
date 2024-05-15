@@ -24,6 +24,7 @@ class StepResult(enum.Enum):
     Loop = enum.auto()
     BadOpCode = enum.auto()
     Exit = enum.auto()
+    DisplayWait = enum.auto()
 
 
 class Engine:
@@ -104,14 +105,18 @@ class Engine:
             else self._instructions_per_step
         )
 
-        for _ in range(instructions_per_step):
-            res = self._step_instruction()
-            if res != StepResult.Success:
+        for idx in range(instructions_per_step):
+            res = self._step_instruction(idx)
+            if res == StepResult.DisplayWait:
+                # Stop here and wait for next frame
+                break
+
+            elif res != StepResult.Success:
                 return res
 
         return StepResult.Success
 
-    def _step_instruction(self) -> StepResult:
+    def _step_instruction(self, idx: int) -> StepResult:
         # Read opcode
         int_code = self._memory.read_opcode(self._registers.pc)
         code = opcodes.parse_opcode(int_code)
@@ -120,7 +125,7 @@ class Engine:
 
         if code is None:
             return StepResult.BadOpCode
-        
+
         # Check exit
         if isinstance(code, opcodes.EXIT):
             self.on_exit.emit()
@@ -132,6 +137,14 @@ class Engine:
                 # Yep, that's a loop
                 self.on_loop.emit()
                 return StepResult.Loop
+
+        # Check display wait
+        if (
+            self.quirks.display_wait
+            and idx > 0
+            and isinstance(code, (opcodes.DRW, opcodes.SDRW))
+        ):
+            return StepResult.DisplayWait
 
         self._process_opcode(code)
         self._ticks += 1

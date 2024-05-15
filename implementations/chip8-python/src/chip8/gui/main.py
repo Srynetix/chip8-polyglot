@@ -96,6 +96,7 @@ def main(
     quirks_index_increment: Optional[bool] = None,
     quirks_draw_clipping: Optional[bool] = None,
     quirks_legacy_scrolling: Optional[bool] = None,
+    quirks_display_wait: Optional[bool] = None,
     # Quirks mode
     quirks_mode: Annotated[
         QuirksMode | None, typer.Option(parser=QuirksMode.parse)
@@ -125,6 +126,8 @@ def main(
         engine.quirks.draw_clipping = quirks_draw_clipping
     if quirks_legacy_scrolling is not None:
         engine.quirks.legacy_scrolling = quirks_legacy_scrolling
+    if quirks_display_wait is not None:
+        engine.quirks.display_wait = quirks_display_wait
 
     if quirks_mode is not None:
         engine.quirks.apply_mode(quirks_mode)
