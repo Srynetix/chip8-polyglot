@@ -1,4 +1,7 @@
+import logging
 from .types import Register, Address, Byte
+
+logger = logging.getLogger(__name__)
 
 
 class Registers:
@@ -22,13 +25,19 @@ class Registers:
         self._pc = self.INITIAL_PC
 
     def set_pc(self, value: Address) -> None:
+        prev_pc = self._pc
         self._pc = value
+        logger.info(f" [set_pc({value})] {prev_pc} -> {value}")
 
     def set_i(self, value: Address) -> None:
+        prev_i = self._i
         self._i = value
+        logger.info(f" [set_i({value})] {prev_i} -> {value}")
 
     def increment_pc(self) -> None:
-        self._pc.value += 2
+        prev_pc = self._pc
+        self._pc += 2
+        logger.info(f" [increment_pc] {prev_pc} -> {self._pc}")
 
     @property
     def pc(self) -> Address:
@@ -39,14 +48,19 @@ class Registers:
         return self._i
 
     def get_vx(self, index: Register) -> Byte:
-        if index.value > self.GENERAL_REGISTER_COUNT:
+        if index > self.GENERAL_REGISTER_COUNT:
             raise RuntimeError("Unsupported general register.")
         return self._general[index.value]
 
     def set_vx(self, index: Register, value: Byte) -> None:
-        if index.value > self.GENERAL_REGISTER_COUNT:
+        if index > self.GENERAL_REGISTER_COUNT:
             raise RuntimeError("Unsupported general register.")
+
+        prev_vx = self._general[index.value]
         self._general[index.value] = value
+        logger.info(f" [set_vx({index}, {value})] {prev_vx} -> {value}")
 
     def set_carry(self, value: bool) -> None:
+        prev_vx = self._general[0xF]
         self._general[0xF] = Byte(int(value))
+        logger.info(f" [set_carry({value})] {prev_vx} -> {Byte(int(value))}")

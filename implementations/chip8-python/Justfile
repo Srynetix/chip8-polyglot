@@ -4,3 +4,15 @@ _all:
 # Run a cartridge.
 run *args:
     poetry run python src/chip8/gui/main.py {{ args }}
+
+# Format.
+fmt:
+    poetry run ruff format .
+
+# Lint.
+lint:
+    poetry run ruff check .
+
+# Test.
+test *args:
+    poetry run pytest {{ args }}

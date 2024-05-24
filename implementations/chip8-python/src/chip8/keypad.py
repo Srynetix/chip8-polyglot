@@ -1,5 +1,6 @@
 from .types import Byte
 
+
 class Keypad:
     KEYS_COUNT = 16
     RELEASE_TICKS = 2
@@ -23,7 +24,7 @@ class Keypad:
         self._last_released_key_ticks = 0
 
     def set_kx(self, key: Byte, value: bool) -> None:
-        if key.value < 0 or key.value > 15:
+        if key < 0 or key > 15:
             raise RuntimeError("Unsupported key value")
 
         self._state[key.value] = value
@@ -33,11 +34,14 @@ class Keypad:
             self._last_released_key_ticks = self._ticks
 
     def get_kx(self, key: Byte) -> bool:
-        if key.value < 0 or key.value > 15:
+        if key < 0 or key > 15:
             raise RuntimeError("Unsupported key value")
         return self._state[key.value]
 
     def step(self) -> None:
-        if self._last_released_key and self._ticks - self._last_released_key_ticks > self.RELEASE_TICKS:
+        if (
+            self._last_released_key
+            and self._ticks - self._last_released_key_ticks > self.RELEASE_TICKS
+        ):
             self._last_released_key = None
         self._ticks += 1
