@@ -23,11 +23,11 @@ class Quirks:
     display_wait: bool
 
     def __init__(self) -> None:
-        self.shift_y = True
+        self.shift_y = False
         self.add_i_carry = False
-        self.vf_reset = True
-        self.index_increment = True
-        self.draw_clipping = True
+        self.vf_reset = False
+        self.index_increment = False
+        self.draw_clipping = False
         self.jump_vx = False
         self.legacy_scrolling = False
         self.display_wait = False
@@ -35,7 +35,7 @@ class Quirks:
     def apply_mode(self, mode: QuirksMode) -> None:
         if mode == QuirksMode.Chip8:
             self.shift_y = True
-            self.add_i_carry = False
+            self.add_i_carry = True
             self.vf_reset = True
             self.index_increment = True
             self.draw_clipping = True
@@ -64,4 +64,11 @@ class Quirks:
             self.display_wait = True
 
         elif mode == QuirksMode.XoChip:
-            raise NotImplementedError()
+            self.shift_y = True
+            self.add_i_carry = True
+            self.vf_reset = False
+            self.index_increment = True
+            self.draw_clipping = False
+            self.jump_vx = False
+            self.legacy_scrolling = False
+            self.display_wait = False

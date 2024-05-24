@@ -10,3 +10,9 @@
 ## Features
 
 - CHIP-8 OK
+- SUPER-CHIP OK
+- XO-CHIP almost OK
+
+## TODO
+
+- XO-CHIP: Audio buffer

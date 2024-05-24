@@ -15,26 +15,26 @@ CI should be setup, with automatic tests, lint and formatting.
 
 ## Available implementations
 
-- Python
+- Python (~80%)
 
 ## Missing implementations on the roadmap
 
-- Go
-- Rust
-- TypeScript / Browser
 - GdScript / Godot Engine 4 
+- Rust
+- Go
+- TypeScript / Browser
 - C# / MonoGame (?)
 - Swift
 
-## Licences
+### Game links
 
-### Game sources
-
-- https://github.com/Timendus/chip8-test-suite/
+- Many CHIP-8/S-CHIP/XO-CHIP tests: https://github.com/Timendus/chip8-test-suite/
+- A full blown XO-CHIP game with a soundtrack: https://github.com/Timendus/3d-viper-maze
+- Public domain games for S-CHIP: https://www.zophar.net/pdroms/chip8/super-chip-games-pack.html
 
 ### External resources
 
-- https://github.com/Timendus/chip8-test-suite/
 - https://tobiasvl.github.io/blog/write-a-chip-8-emulator/
 - https://chip-8.github.io/extensions/#super-chip-11
-- http://johnearnest.github.io/Octo/docs/SuperChip.html
+- https://johnearnest.github.io/Octo/docs/SuperChip.html
+- https://johnearnest.github.io/Octo/docs/XO-ChipSpecification.html

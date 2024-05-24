@@ -9,6 +9,7 @@ devenv.local.nix
 .pre-commit-config.yaml
 .venv
 .pytest_cache
+.ruff_cache
 
 __pycache__
 .vscode

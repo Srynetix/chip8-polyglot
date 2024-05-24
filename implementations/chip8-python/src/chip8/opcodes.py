@@ -42,6 +42,13 @@ class SCRLLFT(OpCode):
 
 
 @dataclass
+class SCRLUP(OpCode):
+    """SCRLUP (00DN) - Scroll up N pixels. (XO-CHIP only)."""
+
+    height: Byte
+
+
+@dataclass
 class EXIT(OpCode):
     """EXIT (00FD) - Exit interpreter (S-CHIP only)."""
 
@@ -100,6 +107,22 @@ class SE(OpCode):
 
     register1: Register
     register2: Register
+
+
+@dataclass
+class SRGI(OpCode):
+    """SRGI (5XY2) - Store VX to VY in (I..I+(Y-X)) (XO-CHIP only)."""
+
+    min_register: Register
+    max_register: Register
+
+
+@dataclass
+class LRGI(OpCode):
+    """LRGI (5XY3) - Load VX to VY from (I..I+(Y-X)) (XO-CHIP only)."""
+
+    min_register: Register
+    max_register: Register
 
 
 @dataclass
@@ -251,6 +274,25 @@ class SKNP(OpCode):
 
 
 @dataclass
+class LDIL(OpCode):
+    """LDIL (F000, NNNN) - I = long address NNNN (XO-CHIP only)."""
+
+    address: Address
+
+
+@dataclass
+class PLN(OpCode):
+    """PLN (FX01) - Select 0 or more drawing planes by bitmask (0 <= N <= 3) (XO-CHIP only)."""
+
+    mask: Byte
+
+
+@dataclass
+class AUD(OpCode):
+    """AUD (F002) - Store 16 bytes from I in the audio buffer (XO-CHIP only)."""
+
+
+@dataclass
 class LDLY(OpCode):
     """LDLY (FX07) - VX = Delay timer."""
 
@@ -310,6 +352,13 @@ class LDBCD(OpCode):
 
 
 @dataclass
+class PTCH(OpCode):
+    """PTCH (FX3A) - Set audio playback rate to 4000*2^((VX - 64) / 48) (XO-CHIP only)."""
+
+    register: Register
+
+
+@dataclass
 class SRG(OpCode):
     """SRG (FX55) - Store V0 to VX in (I..I+X)."""
 
@@ -348,7 +397,13 @@ def parse_opcode(value: Address) -> OpCode | None:
     byte_value = (b2 << 4) + b3
 
     if b0 == 0x0:
-        if b2 == 0xE:
+        if b2 == 0xC:
+            return SCRLDWN(height=Byte(b3))
+
+        elif b2 == 0xD:
+            return SCRLUP(height=Byte(b3))
+
+        elif b2 == 0xE:
             if b3 == 0xE:
                 return RET()
 
@@ -371,9 +426,6 @@ def parse_opcode(value: Address) -> OpCode | None:
             elif b3 == 0xF:
                 return HIRES()
 
-        elif b2 == 0xC:
-            return SCRLDWN(height=Byte(b3))
-
         return SYS(address=Address(addr_value))
 
     elif b0 == 0x1:
@@ -391,6 +443,12 @@ def parse_opcode(value: Address) -> OpCode | None:
     elif b0 == 0x5:
         if b3 == 0x0:
             return SE(register1=Register(b1), register2=Register(b2))
+
+        elif b3 == 0x2:
+            return SRGI(min_register=Register(b1), max_register=Register(b2))
+
+        elif b3 == 0x3:
+            return LRGI(min_register=Register(b1), max_register=Register(b2))
 
     elif b0 == 0x6:
         return LDB(register=Register(b1), byte=Byte(byte_value))
@@ -445,13 +503,23 @@ def parse_opcode(value: Address) -> OpCode | None:
 
     elif b0 == 0xF:
         if b2 == 0x0:
-            if b3 == 0x7:
+            if b3 == 0x0:
+                # Address will be filled later in time.
+                return LDIL(Address(0x0))
+
+            elif b3 == 0x1:
+                return PLN(mask=Byte(b1))
+
+            elif b3 == 0x2:
+                return AUD()
+
+            elif b3 == 0x7:
                 return LDLY(register=Register(b1))
 
             elif b3 == 0xA:
                 return LDK(register=Register(b1))
 
-        if b2 == 0x1:
+        elif b2 == 0x1:
             if b3 == 0x5:
                 return SDLY(register=Register(b1))
 
@@ -461,23 +529,32 @@ def parse_opcode(value: Address) -> OpCode | None:
             elif b3 == 0xE:
                 return ADDI(register=Register(b1))
 
-        if b2 == 0x2 and b3 == 0x9:
-            return LDF(register=Register(b1))
+        elif b2 == 0x2:
+            if b3 == 0x9:
+                return LDF(register=Register(b1))
 
-        if b2 == 0x3 and b3 == 0x0:
-            return SLDF(register=Register(b1))
+        elif b2 == 0x3:
+            if b3 == 0x0:
+                return SLDF(register=Register(b1))
 
-        if b2 == 0x3 and b3 == 0x3:
-            return LDBCD(register=Register(b1))
+            elif b3 == 0x3:
+                return LDBCD(register=Register(b1))
 
-        if b2 == 0x5 and b3 == 0x5:
-            return SRG(max_register=Register(b1))
+            elif b3 == 0xA:
+                return PTCH(register=Register(b1))
 
-        if b2 == 0x6 and b3 == 0x5:
-            return LRG(max_register=Register(b1))
+        elif b2 == 0x5:
+            if b3 == 0x5:
+                return SRG(max_register=Register(b1))
 
-        if b2 == 0x7 and b3 == 0x5:
-            return SRGF(max_register=Register(b1))
+        elif b2 == 0x6:
+            if b3 == 0x5:
+                return LRG(max_register=Register(b1))
 
-        if b2 == 0x8 and b3 == 0x5:
-            return LRGF(max_register=Register(b1))
+        elif b2 == 0x7:
+            if b3 == 0x5:
+                return SRGF(max_register=Register(b1))
+
+        elif b2 == 0x8:
+            if b3 == 0x5:
+                return LRGF(max_register=Register(b1))

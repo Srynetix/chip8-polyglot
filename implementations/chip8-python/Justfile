@@ -14,5 +14,5 @@ lint:
     poetry run ruff check .
 
 # Test.
-test:
-    poetry run pytest
+test *args:
+    poetry run pytest {{ args }}

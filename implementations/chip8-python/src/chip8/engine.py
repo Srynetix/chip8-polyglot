@@ -2,8 +2,9 @@ import enum
 import logging
 from random import Random
 
+from .mode import EmulationMode
+from .audio import Audio
 from .signal import Signal
-
 from .display import Display
 from .font import Font
 from .memory import Memory
@@ -18,6 +19,9 @@ from . import opcodes
 
 logger = logging.getLogger(__name__)
 
+SUPER_CHIP_INSTRUCTIONS_COUNT_FACTOR = 2
+XO_CHIP_INSTRUCTIONS_COUNT_FACTOR = 50
+
 
 class StepResult(enum.Enum):
     Success = enum.auto()
@@ -28,6 +32,7 @@ class StepResult(enum.Enum):
 
 
 class Engine:
+    _audio: Audio
     _display: Display
     _memory: Memory
     _registers: Registers
@@ -38,13 +43,14 @@ class Engine:
     _keypad: Keypad
     _ticks: int
     _instructions_per_step: int
+    _emulation_mode: EmulationMode
 
     on_loop: Signal
     on_exit: Signal
-    on_hires: Signal
-    on_lores: Signal
+    on_audio_update: Signal
 
     def __init__(self) -> None:
+        self._audio = Audio()
         self._display = Display()
         self._memory = Memory()
         self._registers = Registers()
@@ -55,15 +61,19 @@ class Engine:
         self._timers = Timers()
         self._ticks = 0
         self._instructions_per_step = 10
+        self._emulation_mode = EmulationMode.Chip8
 
         self.on_exit = Signal()
         self.on_loop = Signal()
-        self.on_hires = Signal()
-        self.on_lores = Signal()
+        self.on_audio_update = Signal()
 
         self.reset()
 
+    def set_emulation_mode(self, mode: EmulationMode) -> None:
+        self._emulation_mode = mode
+
     def reset(self) -> None:
+        self._audio.reset()
         self._display.reset()
         self._memory.reset()
         self._registers.reset()
@@ -98,14 +108,7 @@ class Engine:
         return self._quirks
 
     def step(self) -> StepResult:
-        instructions_boost = self._display._mode == self._display.Mode.HIRES
-        instructions_per_step = (
-            self._instructions_per_step * 2
-            if instructions_boost
-            else self._instructions_per_step
-        )
-
-        for idx in range(instructions_per_step):
+        for idx in range(self._get_instructions_count_per_step()):
             res = self._step_instruction(idx)
             if res == StepResult.DisplayWait:
                 # Stop here and wait for next frame
@@ -116,6 +119,16 @@ class Engine:
 
         return StepResult.Success
 
+    def _get_instructions_count_per_step(self) -> int:
+        if self._emulation_mode == EmulationMode.Chip8:
+            return self._instructions_per_step
+
+        elif self._emulation_mode == EmulationMode.SuperChip:
+            return self._instructions_per_step * SUPER_CHIP_INSTRUCTIONS_COUNT_FACTOR
+
+        else:
+            return self._instructions_per_step * XO_CHIP_INSTRUCTIONS_COUNT_FACTOR
+
     def _step_instruction(self, idx: int) -> StepResult:
         # Read opcode
         int_code = self._memory.read_opcode(self._registers.pc)
@@ -125,6 +138,13 @@ class Engine:
 
         if code is None:
             return StepResult.BadOpCode
+
+        # Check LDIL
+        if isinstance(code, opcodes.LDIL):
+            # Interpret next code as an address
+            self._registers.increment_pc()
+            address = self._memory.read_opcode(self._registers.pc)
+            code.address = address
 
         # Check exit
         if isinstance(code, opcodes.EXIT):
@@ -162,12 +182,10 @@ class Engine:
 
         elif isinstance(opcode, opcodes.LORES):
             self._display.set_mode(Display.Mode.LORES)
-            self.on_lores.emit()
             self._registers.increment_pc()
 
         elif isinstance(opcode, opcodes.HIRES):
             self._display.set_mode(Display.Mode.HIRES)
-            self.on_hires.emit()
             self._registers.increment_pc()
 
         elif isinstance(opcode, opcodes.SCRLLFT):
@@ -181,6 +199,55 @@ class Engine:
         elif isinstance(opcode, opcodes.SCRLDWN):
             self._display.scroll_down(
                 opcode.height, legacy_mode=self._quirks.legacy_scrolling
+            )
+            self._registers.increment_pc()
+
+        elif isinstance(opcode, opcodes.SCRLUP):
+            self._display.scroll_up(opcode.height)
+            self._registers.increment_pc()
+
+        elif isinstance(opcode, opcodes.SRGI):
+            assert opcode.min_register.value <= opcode.max_register.value
+
+            size = opcode.max_register.value - opcode.min_register.value
+            for x in range(size + 1):
+                self._memory.store_memory(
+                    self._registers.i + x,
+                    [self._registers.get_vx(Register(opcode.min_register.value + x))],
+                )
+
+            self._registers.increment_pc()
+
+        elif isinstance(opcode, opcodes.LRGI):
+            assert opcode.min_register.value <= opcode.max_register.value
+
+            size = opcode.max_register.value - opcode.min_register.value
+            for x in range(size + 1):
+                value = self._memory.read_memory(self._registers.i + x, 1)
+                self._registers.set_vx(opcode.min_register + x, value[0])
+
+            self._registers.increment_pc()
+
+        elif isinstance(opcode, opcodes.LDIL):
+            self._registers.set_i(opcode.address)
+            self._registers.increment_pc()
+
+        elif isinstance(opcode, opcodes.PLN):
+            self._display.set_plane_mask(opcode.mask)
+            self._registers.increment_pc()
+
+        elif isinstance(opcode, opcodes.AUD):
+            buffer = self._memory.read_memory(self._registers.i, 16)
+            self._audio.set_pattern_buffer(buffer)
+            self.on_audio_update.emit(
+                frequency=self._audio.frequency, buffer=self._audio.buffer
+            )
+            self._registers.increment_pc()
+
+        elif isinstance(opcode, opcodes.PTCH):
+            self._audio.set_pitch(self._registers.get_vx(opcode.register))
+            self.on_audio_update.emit(
+                frequency=self._audio.frequency, buffer=self._audio.buffer
             )
             self._registers.increment_pc()
 
@@ -352,22 +419,38 @@ class Engine:
         elif isinstance(opcode, opcodes.DRW):
             vx = self._registers.get_vx(opcode.register_x)
             vy = self._registers.get_vx(opcode.register_y)
-            mem = self._memory.read_memory(self._registers.i, opcode.height.value)
 
-            collision = self._display.draw(
-                vx.value, vy.value, mem, clip=self._quirks.draw_clipping
-            )
+            if self._display._plane_mask == 3:
+                mem = self._memory.read_memory(
+                    self._registers.i, opcode.height.value * 2
+                )
+                collision = self._display.draw_multiplane(
+                    vx.value, vy.value, mem, clip=self._quirks.draw_clipping
+                )
+            else:
+                mem = self._memory.read_memory(self._registers.i, opcode.height.value)
+                collision = self._display.draw(
+                    vx.value, vy.value, mem, clip=self._quirks.draw_clipping
+                )
+
             self._registers.set_carry(collision)
             self._registers.increment_pc()
 
         elif isinstance(opcode, opcodes.SDRW):
             vx = self._registers.get_vx(opcode.register_x)
             vy = self._registers.get_vx(opcode.register_y)
-            mem = self._memory.read_memory(self._registers.i, 16 * 2)
 
-            collision = self._display.super_draw(
-                vx.value, vy.value, mem, clip=self._quirks.draw_clipping
-            )
+            if self._display._plane_mask == 3:
+                mem = self._memory.read_memory(self._registers.i, 16 * 2 * 2)
+                collision = self._display.super_draw_multiplane(
+                    vx.value, vy.value, mem, clip=self._quirks.draw_clipping
+                )
+            else:
+                mem = self._memory.read_memory(self._registers.i, 16 * 2)
+                collision = self._display.super_draw(
+                    vx.value, vy.value, mem, clip=self._quirks.draw_clipping
+                )
+
             self._registers.set_carry(collision)
             self._registers.increment_pc()
 

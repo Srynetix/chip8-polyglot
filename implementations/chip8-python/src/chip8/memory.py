@@ -4,7 +4,8 @@ from .types import Byte, Address
 
 
 class Memory:
-    MEMORY_SIZE = 0x1000
+    # For XO-CHIP
+    MEMORY_SIZE = 0x10000
     FONT_START_LOCATION = Address(0x050)
     SUPER_FONT_START_LOCATION = Address(0x0A0)
     CARTRIDGE_START_LOCATION = Address(0x200)

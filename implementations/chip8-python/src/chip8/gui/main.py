@@ -6,19 +6,21 @@ import pygame
 from pathlib import Path
 import typer
 
-from chip8.engine import Engine, StepResult
-from chip8.cartridge import Cartridge
+from chip8.gui.sound import Buzzer
 
-from chip8.gui.sound import Tone
+from chip8.engine import Engine, StepResult
+from chip8.mode import EmulationMode
+from chip8.cartridge import Cartridge
 from chip8.quirks import QuirksMode
 
 
 def start_gui(engine: Engine) -> None:
     pygame.init()
+
     pygame.mixer.init()
     pygame.mixer.set_num_channels(1)
 
-    pygame.display.set_caption("CHIP-8")
+    pygame.display.set_caption(f"CHIP-8 (emulation mode: {engine._emulation_mode})")
     screen = pygame.display.set_mode((640, 320))
     clock = pygame.time.Clock()
 
@@ -29,24 +31,50 @@ def start_gui(engine: Engine) -> None:
     gui_keyboard = Keyboard()
 
     beep_voice = pygame.mixer.Channel(0)
-    tone = Tone(frequency=220)
+    buzzer = Buzzer()
+    buzzer.generate(
+        4000.0,
+        [
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0xFF,
+            0xFF,
+            0xFF,
+            0xFF,
+            0xFF,
+            0xFF,
+            0xFF,
+            0xFF,
+        ],
+    )
 
     pixel_surface = pygame.Surface((128, 64))
 
+    @engine.on_loop.connect
     def on_loop():
         nonlocal paused
 
         print("End")
         paused = True
 
+    @engine.on_exit.connect
     def on_exit():
         nonlocal paused
 
         print("Exit")
         paused = True
 
-    engine.on_loop.connect(on_loop)
-    engine.on_exit.connect(on_exit)
+    @engine.on_audio_update.connect
+    def on_audio_update(frequency: float, buffer: list[int]):
+        print("update", frequency, buffer)
+        buzzer.generate(frequency, buffer)
+        beep_voice.stop()
 
     while running:
         for event in pygame.event.get():
@@ -66,7 +94,7 @@ def start_gui(engine: Engine) -> None:
 
         if engine.beeping:
             if not beep_voice.get_busy():
-                beep_voice.play(tone, -1)
+                buzzer.play_on_voice(beep_voice)
         else:
             beep_voice.stop()
 
@@ -101,6 +129,10 @@ def main(
     quirks_mode: Annotated[
         QuirksMode | None, typer.Option(parser=QuirksMode.parse)
     ] = None,
+    # Emulation mode
+    emulation_mode: Annotated[
+        EmulationMode | None, typer.Option(parser=EmulationMode.parse)
+    ] = None,
 ):
     if verbose:
         logging.basicConfig(level=logging.INFO)
@@ -108,9 +140,19 @@ def main(
     engine = Engine()
 
     cartridge = Cartridge.from_path(cartridge_path)
-    auto_detected_mode = cartridge.detect_quirks_mode()
-    print(f"Autodetected execution mode: {auto_detected_mode}")
-    engine.quirks.apply_mode(auto_detected_mode)
+    if emulation_mode is None:
+        emulation_mode = EmulationMode.Chip8
+
+    # Apply mode
+    engine.set_emulation_mode(emulation_mode)
+
+    # Apply quirks
+    if emulation_mode == EmulationMode.Chip8:
+        engine.quirks.apply_mode(QuirksMode.Chip8)
+    elif emulation_mode == EmulationMode.SuperChip:
+        engine.quirks.apply_mode(QuirksMode.SuperChipModern)
+    elif emulation_mode == EmulationMode.XoChip:
+        engine.quirks.apply_mode(QuirksMode.XoChip)
 
     if quirks_shift_y is not None:
         engine.quirks.shift_y = quirks_shift_y

@@ -1,51 +1,39 @@
-# From https://www.pygame.org/wiki/SoundGeneration?action=view&id=14731
-
-from array import array
+import audioop
+import struct
+from typing import Generator
 
 import pygame
 
 
-class Tone(pygame.mixer.Sound):
-    """This generates a 'Square wave' with a generator.
+class Buzzer:
+    _sound: pygame.mixer.Sound | None
+    _playback_time: int
 
-    Then creates an array of samples, and passes that into pygame.Sound.
-    """
+    def __init__(self) -> None:
+        self._sound = None
+        self._playback_time = 0
 
-    def __init__(self, frequency, volume=0.1):
-        self.frequency = frequency
-        samples = self.signed_char_to_signed_short(self.make_samples_b())
+    def _buffer_gen(self, pattern_buffer: list[int]) -> Generator[int, None, None]:
+        for byte in pattern_buffer:
+            for bit in range(8):
+                bit_n = 1 << bit
+                if byte & bit_n == bit_n:
+                    yield 32767
+                else:
+                    yield -32767
 
-        super().__init__(buffer=samples)
-        self.set_volume(volume)
+    def generate(self, frequency: float, pattern_buffer: list[int]) -> None:
+        generated_buffer = list(self._buffer_gen(pattern_buffer))
+        packed_buffer = struct.pack(f"{len(generated_buffer)}h", *generated_buffer)
 
-    def make_samples_b(self):
-        """Builds samples array between -127 and 127.
-        Array type 'h'.
-        """
-        mixer_frequency = pygame.mixer.get_init()[0]
-        mixer_format = pygame.mixer.get_init()[1]
-        period = int(round(mixer_frequency / self.frequency))
-        max_amplitude = 2 ** (abs(mixer_format) - 1) - 1
-        max_amplitude = int(max_amplitude / 256)
-        # print(f'mixer_frequency:{mixer_frequency}, mixer_format:{mixer_format}')
-        # print(f'period:{period}, max_amplitude:{max_amplitude}')
-
-        # 'b' array is signed char, 1 byte
-        # https://docs.python.org/3/library/array.html
-        samples = array(
-            "b",
-            (
-                max_amplitude if time < period / 2 else -max_amplitude
-                for time in range(period)
-            ),
+        new_samples, _ = audioop.ratecv(
+            packed_buffer, 1, 1, int(frequency), pygame.mixer.get_init()[0], None
         )
-        return samples
 
-    def signed_char_to_signed_short(self, b_samples):
-        """Converts 1 byte signed char samples to 2 byte signed short.
+        sound = pygame.mixer.Sound(buffer=new_samples)
+        sound.set_volume(0.1)
+        self._sound = sound
 
-        127 -> 32767
-        """
-        # just a simple linear conversion.
-        factor = int(32767 / 127)
-        return array("h", (sample * factor for sample in b_samples))
+    def play_on_voice(self, voice: pygame.mixer.Channel) -> None:
+        if self._sound:
+            voice.play(self._sound)
